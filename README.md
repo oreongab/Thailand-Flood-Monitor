@@ -10,7 +10,7 @@
 ---
 
 <a name="english-description"></a>
-## 🇬🇧 English Description
+## English Description
 
 **Thailand Flood Monitoring System** is a responsive web-based dashboard designed to simulate flood situation monitoring, emergency response, and shelter management. The system operates based on real hydrological data scenarios from the **Royal Irrigation Department's report (December 1, 2025)**.
 
