@@ -47,13 +47,4 @@ The simulation data uses specific metrics from the **Royal Irrigation Department
 * **Critical Zones:** Bang Rakam (Phitsanulok), Phak Hai (Ayutthaya).
 * **Metrics:** Water levels referencing real station codes (e.g., Y.64, C.67) and overflowing heights.
 
-### 🚀 How to Run
-
-1.  Clone this repository:
-    ```bash
-    git clone [https://github.com/your-username/thailand-flood-monitor.git](https://github.com/your-username/thailand-flood-monitor.git)
-    ```
-2.  Navigate to the project folder.
-3.  Open `index.html` in any modern web browser (Chrome, Firefox, Edge).
-    * *Note: No backend server installation is required.*
 
