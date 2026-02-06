@@ -1,5 +1,5 @@
 # Thailand-Flood-Monitor
-# 🌊 Thailand Flood Monitoring System (TH-Water 2025)
+# Thailand Flood Monitoring System (TH-Water 2025)
 
 ![Project Status](https://img.shields.io/badge/Status-Prototype-orange)
 ![License](https://img.shields.io/badge/License-MIT-blue)
@@ -14,7 +14,7 @@
 
 This project demonstrates the use of frontend technologies to visualize geospatial data, manage emergency requests (SOS), and provide actionable insights for both citizens and government officials.
 
-### ✨ Key Features
+###  Key Features
 
 * **Role-Based Access:**
     * **Citizen:** Can view flood status, locate nearest shelters, and send SOS distress signals with specific categories (Elderly, Children, Injured, etc.).
@@ -31,7 +31,7 @@ This project demonstrates the use of frontend technologies to visualize geospati
     * **Drone Scan Animation:** Simulates searching for victims in critical areas.
     * **Real-time Clock:** Displays current local time.
 
-### 🛠 Tech Stack
+###  Tech Stack
 
 * **Frontend:** HTML5, CSS3 (Custom Responsive Design), JavaScript (ES6+)
 * **Mapping API:** [Leaflet.js](https://leafletjs.com/)
