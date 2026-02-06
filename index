@@ -1,0 +1,1829 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Thailand Flood Monitoring System </title>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;600;700&family=Kanit:wght@400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+    <style>
+        :root {
+            --bg-primary: #0a0e1a;
+            --bg-secondary: #141824;
+            --bg-tertiary: #1e2330;
+            --accent-primary: #00d2ff;
+            --accent-danger: #ff3333;
+            --accent-safe: #00ff88;
+            --text-primary: #e8eef7;
+            --text-secondary: #9ca6ba;
+            --border-color: #2a3142;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; outline: none; }
+
+        body {
+            font-family: 'Sarabun', sans-serif;
+            background: linear-gradient(135deg, #0a0e1a 0%, #141824 50%, #1a1f2e 100%);
+            color: var(--text-primary);
+            height: 100vh;
+            overflow: hidden;
+            display: flex; flex-direction: column;
+        }
+
+        /* --- LOGIN SCREEN --- */
+        .login-container {
+            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+            background: linear-gradient(135deg, #0a0e1a 0%, #141824 50%, #1a1f2e 100%);
+            display: flex; align-items: center; justify-content: center; z-index: 10000;
+        }
+        .login-container.hidden { display: none; }
+        
+        .login-box {
+            background: var(--bg-secondary); border: 1px solid var(--border-color);
+            border-radius: 16px; padding: 3rem; width: 90%; max-width: 450px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
+        }
+        .login-header { text-align: center; margin-bottom: 2.5rem; }
+        .login-header h1 { font-family: 'Kanit'; color: var(--accent-primary); font-size: 2.2rem; margin-bottom: 0.5rem; }
+        .login-header p { color: var(--text-secondary); font-size: 1rem; }
+        
+        .user-select { display: flex; flex-direction: column; gap: 1.2rem; }
+        .user-card {
+            background: var(--bg-tertiary); border: 2px solid var(--border-color);
+            border-radius: 12px; padding: 1.5rem; cursor: pointer; transition: all 0.3s;
+            display: flex; align-items: center; gap: 1.5rem;
+        }
+        .user-card:hover { border-color: var(--accent-primary); transform: translateY(-3px); box-shadow: 0 5px 15px rgba(0, 210, 255, 0.15); }
+        
+        .user-avatar {
+            width: 60px; height: 60px; border-radius: 50%; display: flex;
+            align-items: center; justify-content: center; font-size: 1.8rem; flex-shrink: 0;
+        }
+        .user-avatar.client { background: linear-gradient(135deg, #ff3333 0%, #ff6666 100%); box-shadow: 0 0 15px rgba(255, 51, 51, 0.3); }
+        .user-avatar.government { background: linear-gradient(135deg, #00d2ff 0%, #00ff88 100%); box-shadow: 0 0 15px rgba(0, 255, 136, 0.3); }
+        
+        .user-info h3 { font-family: 'Kanit'; margin-bottom: 0.3rem; font-size: 1.2rem; }
+        .user-info p { color: var(--text-secondary); font-size: 0.9rem; }
+
+        /* --- NAVBAR --- */
+        .navbar {
+            height: 64px; background: rgba(10, 14, 26, 0.98);
+            border-bottom: 1px solid var(--border-color);
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 0 2rem; flex-shrink: 0;
+        }
+        .nav-brand { font-family: 'Kanit'; font-size: 1.5rem; font-weight: bold; color: var(--accent-primary); display: flex; align-items: center; gap: 10px; }
+        
+        .nav-menu { display: flex; gap: 1rem; }
+        .nav-btn {
+            background: transparent; border: 1px solid var(--border-color);
+            color: var(--text-secondary); padding: 0.6rem 1.2rem;
+            border-radius: 8px; cursor: pointer; transition: 0.3s; font-family: 'Sarabun';
+        }
+        .nav-btn:hover { background: var(--bg-tertiary); color: white; }
+        .nav-btn.active { background: var(--accent-primary); color: #000; font-weight: bold; border-color: var(--accent-primary); }
+        
+        .user-status-container { display: flex; align-items: center; gap: 15px; }
+        .user-badge {
+            display: flex; align-items: center; gap: 10px; background: var(--bg-tertiary);
+            padding: 6px 16px 6px 6px; border-radius: 50px; border: 1px solid var(--border-color);
+        }
+        .user-badge-avatar { width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.9rem; }
+        .user-badge-avatar.client { background: linear-gradient(135deg, #ff3333 0%, #ff6666 100%); }
+        .user-badge-avatar.government { background: linear-gradient(135deg, #00d2ff 0%, #00ff88 100%); }
+        .user-badge-name { font-weight: 600; font-size: 0.9rem; }
+
+        .logout-btn {
+            background: transparent; border: 1px solid var(--border-color); color: var(--text-secondary);
+            padding: 0.5rem 1rem; border-radius: 6px; cursor: pointer; font-size: 0.85rem; transition: 0.2s;
+        }
+        .logout-btn:hover { background: var(--accent-danger); color: white; border-color: var(--accent-danger); }
+
+        /* --- LAYOUT --- */
+        .page-container { flex-grow: 1; position: relative; display: none; }
+        .page-container.active { display: grid; grid-template-columns: 360px 1fr; height: 100%; }
+        
+        .sidebar {
+            background: var(--bg-secondary); border-right: 1px solid var(--border-color);
+            padding: 1.5rem; overflow-y: auto; display: flex; flex-direction: column; gap: 1.5rem;
+        }
+        
+        .map-wrapper { position: relative; width: 100%; height: 100%; }
+        #map-flood, #map-victims, #map-safety { width: 100%; height: 100%; background: #242f3e; }
+
+        /* --- DOCUMENT SIDEBAR (NEW FEATURE) --- */
+        .document-sidebar {
+            position: absolute;
+            top: 0;
+            right: -450px;
+            width: 450px;
+            height: 100%;
+            background: var(--bg-secondary);
+            border-left: 1px solid var(--border-color);
+            box-shadow: -5px 0 20px rgba(0,0,0,0.5);
+            z-index: 1500;
+            transition: right 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .document-sidebar.open {
+            right: 0;
+        }
+
+        .doc-header {
+            padding: 1.5rem;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: var(--bg-tertiary);
+        }
+
+        .doc-title {
+            font-family: 'Kanit';
+            font-size: 1.3rem;
+            color: var(--accent-primary);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .doc-close-btn {
+            background: transparent;
+            border: 1px solid var(--border-color);
+            color: var(--text-secondary);
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            cursor: pointer;
+            transition: 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .doc-close-btn:hover {
+            background: var(--accent-danger);
+            color: white;
+            border-color: var(--accent-danger);
+        }
+
+        .doc-content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 1.5rem;
+        }
+
+        .doc-section {
+            margin-bottom: 1.5rem;
+            padding-bottom: 1.5rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .doc-section:last-child {
+            border-bottom: none;
+        }
+
+        .doc-section-title {
+            font-family: 'Kanit';
+            font-size: 1.1rem;
+            color: var(--accent-primary);
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .doc-field {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 0.8rem;
+            padding: 0.5rem 0;
+        }
+
+        .doc-field-label {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }
+
+        .doc-field-value {
+            font-weight: 600;
+            text-align: right;
+            max-width: 60%;
+        }
+
+        .doc-risk-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-weight: bold;
+            font-size: 0.85rem;
+            text-transform: uppercase;
+        }
+
+        .doc-risk-badge.critical { background: rgba(255, 51, 51, 0.2); color: #ff3333; border: 1px solid #ff3333; }
+        .doc-risk-badge.high { background: rgba(255, 136, 0, 0.2); color: #ff8800; border: 1px solid #ff8800; }
+        .doc-risk-badge.medium { background: rgba(255, 204, 0, 0.2); color: #ffcc00; border: 1px solid #ffcc00; }
+        .doc-risk-badge.low { background: rgba(0, 204, 102, 0.2); color: #00cc66; border: 1px solid #00cc66; }
+
+        .doc-download-btn {
+            width: 100%;
+            background: linear-gradient(135deg, var(--accent-primary) 0%, var(--accent-safe) 100%);
+            color: #000;
+            border: none;
+            padding: 14px 24px;
+            border-radius: 8px;
+            font-weight: bold;
+            font-size: 1rem;
+            cursor: pointer;
+            font-family: 'Kanit';
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            transition: 0.2s;
+            margin-top: 1rem;
+        }
+
+        .doc-download-btn:hover {
+            transform: scale(1.02);
+            box-shadow: 0 5px 20px rgba(0, 210, 255, 0.4);
+        }
+
+        .doc-footer {
+            padding: 1rem 1.5rem;
+            border-top: 1px solid var(--border-color);
+            background: var(--bg-tertiary);
+        }
+
+        .doc-list {
+            list-style: none;
+            padding-left: 0;
+        }
+
+        .doc-list li {
+            padding: 0.5rem 0;
+            padding-left: 1.5rem;
+            position: relative;
+        }
+
+        .doc-list li:before {
+            content: "•";
+            color: var(--accent-primary);
+            font-weight: bold;
+            position: absolute;
+            left: 0;
+        }
+
+        .doc-info-box {
+            background: rgba(0, 210, 255, 0.1);
+            border-left: 3px solid var(--accent-primary);
+            padding: 1rem;
+            border-radius: 4px;
+            margin: 1rem 0;
+        }
+
+        .doc-warning-box {
+            background: rgba(255, 51, 51, 0.1);
+            border-left: 3px solid var(--accent-danger);
+            padding: 1rem;
+            border-radius: 4px;
+            margin: 1rem 0;
+        }
+
+        /* --- COMPONENTS --- */
+        .search-box { position: relative; }
+        .search-input {
+            width: 100%; background: var(--bg-primary); border: 1px solid var(--border-color);
+            padding: 0.8rem 1rem 0.8rem 2.5rem; border-radius: 8px; color: white; font-family: 'Sarabun';
+        }
+        .search-icon { position: absolute; left: 1rem; top: 50%; transform: translateY(-50%); color: var(--text-secondary); }
+
+        .stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.8rem; }
+        .stat-card {
+            background: var(--bg-tertiary); padding: 1rem; border-radius: 8px;
+            border-left: 3px solid; display: flex; flex-direction: column; justify-content: center;
+            cursor: pointer; transition: 0.3s;
+        }
+        .stat-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        }
+        .stat-card.active {
+            background: rgba(255, 255, 255, 0.1);
+            box-shadow: 0 0 15px rgba(0, 210, 255, 0.3);
+            border-right: 3px solid var(--accent-primary);
+        }
+        .stat-value { font-family: 'Kanit'; font-size: 1.5rem; font-weight: 700; }
+        .stat-label { font-size: 0.8rem; color: var(--text-secondary); }
+        .c-crit { border-color: #ff3333; } .c-high { border-color: #ff8800; } .c-med { border-color: #ffcc00; } .c-safe { border-color: var(--accent-safe); }
+
+        .item-list { flex-grow: 1; overflow-y: auto; }
+        .list-item {
+            padding: 1rem; border-bottom: 1px solid var(--border-color);
+            cursor: pointer; transition: 0.2s; display: flex; align-items: center; gap: 0.8rem;
+        }
+        .list-item:hover { background: var(--bg-tertiary); }
+        
+        /* Victim Avatar Styles */
+        .victim-avatar {
+            width: 44px; height: 44px; border-radius: 50%;
+            display: flex; align-items: center; justify-content: center; font-size: 1.2rem;
+            flex-shrink: 0;
+        }
+        .victim-avatar.urgent { background: rgba(255, 51, 51, 0.2); color: var(--accent-danger); }
+        .victim-avatar.wait { background: rgba(255, 204, 0, 0.2); color: #ffcc00; }
+        .victim-avatar.safe { background: rgba(0, 255, 136, 0.2); color: var(--accent-safe); }
+        .victim-avatar.sos { background: var(--accent-danger); color: white; }
+        
+        /* Safety Avatar Styles */
+        .safety-avatar {
+            width: 44px; height: 44px; border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            background: rgba(0, 255, 136, 0.2); color: var(--accent-safe);
+            font-size: 1.2rem; flex-shrink: 0;
+        }
+        
+        .item-info { flex-grow: 1; min-width: 0; }
+        .item-name { font-weight: bold; display: block; font-size: 0.95rem; margin-bottom: 0.2rem; }
+        .item-sub { font-size: 0.8rem; color: var(--text-secondary); display: block; }
+        
+        .status-badge {
+            padding: 4px 10px; border-radius: 4px; font-size: 0.7rem; font-weight: bold;
+            text-transform: uppercase; border: 1px solid; flex-shrink: 0;
+        }
+        .status-badge.urgent { background: rgba(255, 51, 51, 0.15); border-color: var(--accent-danger); color: var(--accent-danger); }
+        .status-badge.wait { background: rgba(255, 204, 0, 0.15); border-color: #ffcc00; color: #ffcc00; }
+        .status-badge.safe { background: rgba(0, 255, 136, 0.15); border-color: var(--accent-safe); color: var(--accent-safe); }
+        .status-badge.open { background: rgba(0, 255, 136, 0.15); border-color: var(--accent-safe); color: var(--accent-safe); }
+
+        /* --- ACTION BUTTONS --- */
+        .action-btn {
+            position: absolute; bottom: 70px; padding: 14px 24px; border-radius: 50px;
+            font-weight: bold; cursor: pointer; z-index: 1000; font-family: 'Kanit'; font-size: 1rem;
+            display: none; align-items: center; gap: 10px; border: none; transition: transform 0.2s;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+        }
+        .action-btn.show { display: flex; }
+        .action-btn:hover { transform: scale(1.05); }
+        
+        .sos-btn { left: 20px; background: var(--accent-danger); color: white; animation: pulse-sos 2s infinite; }
+        .drone-btn { left: 20px; background: linear-gradient(135deg, var(--accent-primary) 0%, var(--accent-safe) 100%); color: #000; }
+        .route-btn { right: 20px; background: var(--accent-safe); color: #000; }
+        
+        .clear-route-btn {
+            position: absolute; bottom: 130px; right: 20px; background: var(--bg-tertiary); border: 1px solid var(--accent-danger);
+            color: var(--accent-danger); padding: 8px 16px; border-radius: 8px; font-weight: bold;
+            cursor: pointer; z-index: 1000; display: none; font-family: 'Kanit'; font-size: 0.9rem;
+        }
+        .clear-route-btn.show { display: block; }
+
+        /* --- SOS TYPE SELECTION MODAL --- */
+        .sos-modal {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100vw; height: 100vh;
+            background: rgba(0, 0, 0, 0.8);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 10001;
+            backdrop-filter: blur(5px);
+        }
+        
+        .sos-modal.show {
+            display: flex;
+        }
+
+        .sos-modal-content {
+            background: var(--bg-secondary);
+            border: 1px solid var(--accent-danger);
+            border-radius: 16px;
+            padding: 2rem;
+            width: 90%;
+            max-width: 500px;
+            box-shadow: 0 20px 60px rgba(255, 51, 51, 0.5);
+        }
+
+        .sos-modal-header {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+
+        .sos-modal-header h2 {
+            font-family: 'Kanit';
+            color: var(--accent-danger);
+            font-size: 1.8rem;
+            margin-bottom: 0.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        .sos-modal-header p {
+            color: var(--text-secondary);
+            font-size: 1rem;
+        }
+
+        .sos-type-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .sos-type-card {
+            background: var(--bg-tertiary);
+            border: 2px solid var(--border-color);
+            border-radius: 12px;
+            padding: 1.5rem 1rem;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-align: center;
+        }
+
+        .sos-type-card:hover {
+            border-color: var(--accent-danger);
+            transform: translateY(-3px);
+            box-shadow: 0 5px 15px rgba(255, 51, 51, 0.2);
+        }
+
+        .sos-type-card.selected {
+            border-color: var(--accent-danger);
+            background: rgba(255, 51, 51, 0.1);
+        }
+
+        .sos-type-icon {
+            font-size: 2.5rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .sos-type-label {
+            font-family: 'Kanit';
+            font-size: 1rem;
+            font-weight: 600;
+        }
+
+        .sos-modal-buttons {
+            display: flex;
+            gap: 1rem;
+        }
+
+        .sos-modal-btn {
+            flex: 1;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-weight: bold;
+            font-family: 'Kanit';
+            cursor: pointer;
+            transition: 0.2s;
+            border: none;
+            font-size: 1rem;
+        }
+
+        .sos-modal-btn.cancel {
+            background: var(--bg-tertiary);
+            color: var(--text-secondary);
+            border: 1px solid var(--border-color);
+        }
+
+        .sos-modal-btn.cancel:hover {
+            background: var(--bg-primary);
+        }
+
+        .sos-modal-btn.confirm {
+            background: var(--accent-danger);
+            color: white;
+        }
+
+        .sos-modal-btn.confirm:hover {
+            background: #cc0000;
+        }
+
+        .sos-modal-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        @keyframes pulse-sos { 0%, 100% { box-shadow: 0 0 0 0 rgba(255, 51, 51, 0.7); } 70% { box-shadow: 0 0 0 15px rgba(255, 51, 51, 0); } 100% { box-shadow: 0 0 0 0 rgba(255, 51, 51, 0); } }
+        
+        .scanning-overlay {
+            position: absolute; top: 80px; left: 50%; transform: translateX(-50%);
+            background: rgba(0, 210, 255, 0.9); backdrop-filter: blur(5px);
+            color: #000; padding: 10px 24px; border-radius: 50px;
+            font-family: 'Kanit'; font-weight: bold; z-index: 2000;
+            display: none; align-items: center; gap: 10px; box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+        }
+        .scanning-overlay.show { display: flex; }
+
+        .drone-marker { z-index: 9999; transition: all 0.5s linear; }
+        .drone-icon { animation: drone-spin 0.2s linear infinite; }
+        @keyframes drone-spin { 100% { transform: rotate(360deg); } }
+        
+        .sos-marker { animation: sos-pop 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+        @keyframes sos-pop { 0% { transform: scale(0); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
+
+        /* --- LEAFLET OVERRIDES --- */
+        .leaflet-popup-content-wrapper { background: var(--bg-secondary); color: var(--text-primary); border: 1px solid var(--border-color); border-radius: 8px; }
+        .leaflet-popup-tip { background: var(--bg-secondary); }
+        .leaflet-routing-container { background: var(--bg-secondary) !important; color: var(--text-primary) !important; border: 1px solid var(--border-color) !important; }
+        .leaflet-routing-alt { background: var(--bg-tertiary) !important; }
+        .leaflet-top.leaflet-right { display: none; }
+        
+        .popup-header {
+            font-family: 'Kanit';
+            font-size: 1.1rem;
+            color: var(--accent-primary);
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 5px;
+            margin-bottom: 8px;
+        }
+        .popup-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 4px;
+            font-size: 0.9rem;
+        }
+        .popup-row span:first-child {
+            color: var(--text-secondary);
+        }
+
+        .popup-view-doc-btn {
+            margin-top: 10px;
+            width: 100%;
+            background: var(--accent-primary);
+            color: #000;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            font-weight: bold;
+            cursor: pointer;
+            font-family: 'Kanit';
+            transition: 0.2s;
+        }
+
+        .popup-view-doc-btn:hover {
+            background: var(--accent-safe);
+        }
+
+        @media (max-width: 768px) {
+            .page-container.active { grid-template-columns: 1fr; grid-template-rows: 45% 55%; }
+            .sidebar { order: 2; } .map-wrapper { order: 1; }
+            .document-sidebar { width: 100%; right: -100%; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="login-container" id="loginContainer">
+        <div class="login-box">
+            <div class="login-header">
+                <h1><i class="fas fa-water"></i> Thailand Flood Monitor</h1>
+                <p>Select User Type</p>
+            </div>
+            <div class="user-select">
+                <div class="user-card" onclick="login('client')">
+                    <div class="user-avatar client"><i class="fas fa-user"></i></div>
+                    <div class="user-info">
+                        <h3>Citizen</h3>
+                        <p>Request emergency assistance</p>
+                    </div>
+                </div>
+                <div class="user-card" onclick="login('government')">
+                    <div class="user-avatar government"><i class="fas fa-user-shield"></i></div>
+                    <div class="user-info">
+                        <h3>Government Official</h3>
+                        <p>Monitor and respond to emergencies</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <nav class="navbar">
+        <div class="nav-brand"><i class="fas fa-water"></i> Thailand Flood Monitor</div>
+        <div class="nav-menu">
+            <button class="nav-btn active" onclick="switchPage('flood')"><i class="fas fa-cloud-showers-heavy"></i> Flood Status</button>
+            <button class="nav-btn" onclick="switchPage('victims')"><i class="fas fa-user-injured"></i> Victims</button>
+            <button class="nav-btn" onclick="switchPage('safety')"><i class="fas fa-shield-alt"></i> Shelters</button>
+        </div>
+        <div class="user-status-container">
+            <div class="user-badge" id="userBadge" style="display: none;">
+                <div class="user-badge-avatar" id="userBadgeAvatar"></div>
+                <span class="user-badge-name" id="userBadgeName">Citizen</span>
+            </div>
+            <button class="logout-btn" onclick="logout()" id="logoutBtn" style="display: none;">Logout</button>
+            <div style="font-size: 0.8rem; color: var(--text-secondary); min-width: 60px; text-align: right;">
+                <span id="currentTime">--:--</span>
+            </div>
+        </div>
+    </nav>
+
+    <!-- SOS Type Selection Modal -->
+    <div class="sos-modal" id="sosModal">
+        <div class="sos-modal-content">
+            <div class="sos-modal-header">
+                <h2><i class="fas fa-exclamation-triangle"></i> Send SOS Signal</h2>
+                <p>Please select the type of assistance needed</p>
+            </div>
+            <div class="sos-type-grid">
+                <div class="sos-type-card" onclick="selectSOSType('elderly')">
+                    <div class="sos-type-icon">👴</div>
+                    <div class="sos-type-label">Elderly</div>
+                </div>
+                <div class="sos-type-card" onclick="selectSOSType('children')">
+                    <div class="sos-type-icon">👶</div>
+                    <div class="sos-type-label">Children</div>
+                </div>
+                <div class="sos-type-card" onclick="selectSOSType('disabled')">
+                    <div class="sos-type-icon">♿</div>
+                    <div class="sos-type-label">Disabled</div>
+                </div>
+                <div class="sos-type-card" onclick="selectSOSType('pregnant')">
+                    <div class="sos-type-icon">🤰</div>
+                    <div class="sos-type-label">Pregnant</div>
+                </div>
+                <div class="sos-type-card" onclick="selectSOSType('injured')">
+                    <div class="sos-type-icon">🤕</div>
+                    <div class="sos-type-label">Injured</div>
+                </div>
+                <div class="sos-type-card" onclick="selectSOSType('general')">
+                    <div class="sos-type-icon">👤</div>
+                    <div class="sos-type-label">General</div>
+                </div>
+            </div>
+            <div class="sos-modal-buttons">
+                <button class="sos-modal-btn cancel" onclick="closeSOSModal()">Cancel</button>
+                <button class="sos-modal-btn confirm" id="sosConfirmBtn" onclick="confirmSOS()" disabled>Confirm SOS</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="page-flood" class="page-container active">
+        <aside class="sidebar">
+            <h3 style="color:var(--accent-primary)">Risk Overview</h3>
+            <div class="search-box">
+                <i class="fas fa-search search-icon"></i>
+                <input type="text" id="searchDistrict" class="search-input" placeholder="Search district...">
+            </div>
+            <div class="stat-grid">
+                <div class="stat-card c-crit" onclick="filterByRisk('critical')" style="cursor: pointer;">
+                    <div class="stat-label">Critical</div>
+                    <div class="stat-value" id="f-crit">0</div>
+                </div>
+                <div class="stat-card c-high" onclick="filterByRisk('high')" style="cursor: pointer;">
+                    <div class="stat-label">High</div>
+                    <div class="stat-value" id="f-high">0</div>
+                </div>
+                <div class="stat-card c-med" onclick="filterByRisk('medium')" style="cursor: pointer;">
+                    <div class="stat-label">Medium</div>
+                    <div class="stat-value" id="f-med">0</div>
+                </div>
+                <div class="stat-card c-safe" onclick="filterByRisk('low')" style="cursor: pointer;">
+                    <div class="stat-label">Normal</div>
+                    <div class="stat-value" id="f-low">0</div>
+                </div>
+            </div>
+            <div id="districtList" class="item-list"></div>
+        </aside>
+        <div class="map-wrapper">
+            <div id="map-flood"></div>
+            <div class="scanning-overlay" id="scanningOverlay-flood"><i class="fas fa-drone drone-icon"></i> &nbsp;Scanning area...</div>
+            
+            <!-- Document Sidebar -->
+            <div class="document-sidebar" id="documentSidebar">
+                <div class="doc-header">
+                    <div class="doc-title">
+                        <i class="fas fa-file-alt"></i>
+                        <span id="docTitle">Area Details</span>
+                    </div>
+                    <button class="doc-close-btn" onclick="closeDocumentSidebar()">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <div class="doc-content" id="docContent">
+                    <!-- Content will be dynamically generated -->
+                </div>
+                <div class="doc-footer">
+                    <button class="doc-download-btn" onclick="downloadPDF()">
+                        <i class="fas fa-download"></i>
+                        Download PDF Document
+                    </button>
+                </div>
+            </div>
+            
+            <button class="action-btn sos-btn" id="sosBtn-flood" onclick="sendSOS('flood')"><i class="fas fa-exclamation-triangle"></i> Send SOS</button>
+            <button class="action-btn drone-btn" id="droneScanBtn-flood" onclick="startDroneScan('flood')"><i class="fas fa-drone"></i> Start Scan</button>
+            <button class="action-btn route-btn" id="routeBtn-flood" onclick="showNearestShelter('flood')"><i class="fas fa-location-arrow"></i> Navigate to Shelter</button>
+            <button class="clear-route-btn" id="clearBtn-flood" onclick="clearRoute('flood')"><i class="fas fa-times"></i> Clear Route</button>
+        </div>
+    </div>
+
+    <div id="page-victims" class="page-container">
+        <aside class="sidebar">
+            <h3 style="color:var(--accent-danger)">Victims List</h3>
+            <div class="search-box">
+                <i class="fas fa-search search-icon"></i>
+                <input type="text" id="searchVictim" class="search-input" placeholder="Search name...">
+            </div>
+            <div class="stat-grid">
+                <div class="stat-card c-crit" style="grid-column: span 2;">
+                    <div class="stat-label">Urgent Help Needed</div><div class="stat-value" id="v-urgent" style="color:var(--accent-danger)">0</div>
+                </div>
+                <div class="stat-card c-med"><div class="stat-label">Waiting for Help</div><div class="stat-value" id="v-wait">0</div></div>
+                <div class="stat-card c-safe"><div class="stat-label">Safe</div><div class="stat-value" id="v-safe">0</div></div>
+            </div>
+            <div id="victimsList" class="item-list"></div>
+        </aside>
+        <div class="map-wrapper">
+            <div id="map-victims"></div>
+            <div class="scanning-overlay" id="scanningOverlay-victims"><i class="fas fa-drone drone-icon"></i> &nbsp;Scanning area...</div>
+            
+            <button class="action-btn sos-btn" id="sosBtn-victims" onclick="sendSOS('victims')"><i class="fas fa-exclamation-triangle"></i> Send SOS Signal</button>
+            <button class="action-btn drone-btn" id="droneScanBtn-victims" onclick="startDroneScan('victims')"><i class="fas fa-drone"></i> Start Scan</button>
+            <button class="action-btn route-btn" id="routeBtn-victims" onclick="showNearestShelter('victims')"><i class="fas fa-location-arrow"></i> Navigate to Shelter</button>
+            <button class="clear-route-btn" id="clearBtn-victims" onclick="clearRoute('victims')"><i class="fas fa-times"></i> Clear Route</button>
+        </div>
+    </div>
+
+    <div id="page-safety" class="page-container">
+        <aside class="sidebar">
+            <h3 style="color:var(--accent-safe)">Shelters</h3>
+            <div class="search-box">
+                <i class="fas fa-search search-icon"></i>
+                <input type="text" id="searchSafety" class="search-input" placeholder="Search shelters...">
+            </div>
+            <div class="stat-grid">
+                <div class="stat-card c-safe" style="grid-column: span 2;">
+                    <div class="stat-label">Total Shelters</div><div class="stat-value" id="s-total">0</div>
+                </div>
+                <div class="stat-card c-safe"><div class="stat-label">Capacity</div><div class="stat-value" id="s-capacity">0</div></div>
+                <div class="stat-card c-safe"><div class="stat-label">Available</div><div class="stat-value" id="s-available">0</div></div>
+            </div>
+            <div id="safetyList" class="item-list"></div>
+        </aside>
+        <div class="map-wrapper">
+            <div id="map-safety"></div>
+        </div>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.js"></script>
+
+    <script>
+        // --- REAL DATA FROM GOVERNMENT REPORT: 1 December 2568 (2025) ---
+        const districts = [
+            // Northern Region - Chiang Mai and Lamphun (12 flood areas from report)
+            { 
+                name: "Mueang Chiang Mai", 
+                lat: 18.7883, lng: 98.9853,
+                project: "Ping River Basin Flood Protection Project",
+                projectStartDate: "2566-03-15",
+                completedDate: "2567-11-20",
+                budget: 3862000, maintenanceCount: 1,
+                population: 175000, households: 58333, evacuated: 850,
+                shelterNearby: "Wat Chedi Luang, Yupparaj Wittayalai School",
+                waterLevel: 1.15,
+                overflowStatus: "Critical Overflow", // NEW: Overflow data
+                overflowHeight: 0.65, // meters above normal
+                riverStatus: "Above danger level by 0.65m",
+                rainDurationHours: 36,
+                emergencyResponse: "8 rescue teams, 12 boats deployed",
+                affectedInfra: "15 main roads, 3 bridges closed, Areas: Tha Phae, Chang Moi, Chang Phueak",
+                forecast: "Rain decreasing in 18 hours",
+                baseRain: 112, baseRisk: 'critical'
+            },
+            { 
+                name: "Mae Rim", 
+                lat: 18.8969, lng: 98.9381,
+                project: "Mae Sa Canal Drainage System",
+                projectStartDate: "2565-08-10",
+                completedDate: "2567-05-15",
+                budget: 1580000, maintenanceCount: 2,
+                population: 52000, households: 17333, evacuated: 320,
+                shelterNearby: "Wat Phra That Doi Saket, Mae Rim School",
+                waterLevel: 0.85,
+                overflowStatus: "Moderate Overflow",
+                overflowHeight: 0.35,
+                riverStatus: "Above normal by 0.35m",
+                rainDurationHours: 28,
+                emergencyResponse: "4 rescue teams",
+                affectedInfra: "8 local roads, Areas: Don Kaeo, San Pong, Rim Tai",
+                forecast: "Situation stabilizing",
+                baseRain: 98, baseRisk: 'high'
+            },
+            { 
+                name: "Lamphun", 
+                lat: 18.5745, lng: 99.0080,
+                project: "Kuang River Improvement Project",
+                projectStartDate: "2565-02-20",
+                completedDate: "2566-09-10",
+                budget: 892000, maintenanceCount: 3,
+                population: 38000, households: 12667, evacuated: 120,
+                shelterNearby: "Wat Phra That Hariphunchai",
+                waterLevel: 0.55,
+                overflowStatus: "Minor Overflow",
+                overflowHeight: 0.15,
+                riverStatus: "Slightly above normal",
+                rainDurationHours: 20,
+                emergencyResponse: "2 rescue teams",
+                affectedInfra: "4 roads partially affected, Areas: Wiang, Pa Sang",
+                forecast: "Normal",
+                baseRain: 76, baseRisk: 'medium'
+            },
+            
+            // Central Region - Bangkok Metropolitan (8 flood areas from report)
+            { 
+                name: "Pathum Thani", 
+                lat: 14.0208, lng: 100.5250,
+                project: "Lam Luk Ka Canal 3-4-5 Monkey Cheek Project",
+                projectStartDate: "2565-10-01",
+                completedDate: "2567-08-20",
+                budget: 5480000, maintenanceCount: 1,
+                population: 245000, households: 81667, evacuated: 1850,
+                shelterNearby: "Thammasat University Rangsit, IMPACT Arena Dome",
+                waterLevel: 0.95,
+                overflowStatus: "Significant Overflow",
+                overflowHeight: 0.45,
+                riverStatus: "Chao Phraya overflow +0.45m",
+                rainDurationHours: 24,
+                emergencyResponse: "1 Command Center, 12 rescue teams",
+                affectedInfra: "18 main roads, 45 flood points, Areas: Khlong Luang, Rangsit, Lam Luk Ka",
+                forecast: "Gradual water recession in 24 hours",
+                baseRain: 89, baseRisk: 'high'
+            },
+            { 
+                name: "Nakhon Pathom", 
+                lat: 13.8199, lng: 100.0408,
+                project: "Tha Chin River Basin Flood Prevention",
+                projectStartDate: "2564-11-15",
+                completedDate: "2566-07-30",
+                budget: 2340000, maintenanceCount: 4,
+                population: 128000, households: 42667, evacuated: 450,
+                shelterNearby: "Silpakorn University Sanam Chandra, Phra Pathom Chedi",
+                waterLevel: 0.68,
+                overflowStatus: "Moderate Overflow",
+                overflowHeight: 0.28,
+                riverStatus: "Above warning level",
+                rainDurationHours: 18,
+                emergencyResponse: "5 rescue teams",
+                affectedInfra: "12 roads, 3 markets, Areas: Mueang, Nakhon Chai Si, Sam Phran",
+                forecast: "Rain stopped, improving",
+                baseRain: 65, baseRisk: 'medium'
+            },
+            { 
+                name: "Phaya Thai", 
+                lat: 13.7800, lng: 100.5400,
+                project: "Vibhavadi-Rangsit Drainage System Upgrade",
+                projectStartDate: "2565-01-15",
+                completedDate: "2566-10-20",
+                budget: 900000, maintenanceCount: 1,
+                population: 98000, households: 32667, evacuated: 0,
+                shelterNearby: "Rajavithi Hospital, Victory Monument",
+                waterLevel: 0.15,
+                overflowStatus: "No Overflow",
+                overflowHeight: 0,
+                riverStatus: "Normal - drainage effective",
+                rainDurationHours: 8,
+                emergencyResponse: "Monitoring",
+                affectedInfra: "None - good drainage",
+                forecast: "Normal conditions",
+                baseRain: 42, baseRisk: 'low'
+            },
+            
+            // Eastern Region (7 flood areas from report)
+            { 
+                name: "Chanthaburi", 
+                lat: 12.6113, lng: 102.1038,
+                project: "Chanthaburi River Bank Protection",
+                projectStartDate: "2564-05-20",
+                completedDate: "2566-03-15",
+                budget: 1755000, maintenanceCount: 2,
+                population: 156000, households: 52000, evacuated: 680,
+                shelterNearby: "Wat Khao Sukim, Jan Hun Bamrung School",
+                waterLevel: 0.42,
+                overflowStatus: "Minor Overflow",
+                overflowHeight: 0.12,
+                riverStatus: "Slightly elevated",
+                rainDurationHours: 22,
+                emergencyResponse: "6 rescue teams",
+                affectedInfra: "5 coastal roads, Areas: Mueang, Tha Mai, Laem Sing",
+                forecast: "Rain decreasing in 12 hours",
+                baseRain: 88, baseRisk: 'high'
+            },
+            { 
+                name: "Rayong", 
+                lat: 12.6814, lng: 101.2816,
+                project: "Map Ta Phut Industrial Estate Drainage",
+                projectStartDate: "2565-07-10",
+                completedDate: "2567-02-28",
+                budget: 3200000, maintenanceCount: 1,
+                population: 189000, households: 63000, evacuated: 280,
+                shelterNearby: "Rayong Provincial Hall, Rayong Wittayakom School",
+                waterLevel: 0.28,
+                overflowStatus: "No Overflow",
+                overflowHeight: 0,
+                riverStatus: "Within normal range",
+                rainDurationHours: 14,
+                emergencyResponse: "3 rescue teams",
+                affectedInfra: "8 industrial roads, Areas: Ban Khai Nam Sai, Mueang",
+                forecast: "Situation improving",
+                baseRain: 54, baseRisk: 'medium'
+            },
+            
+            // Southern Region - Nakhon Si Thammarat (CRITICAL ZONE - 13 flood areas from report)
+            { 
+                name: "Mueang Nakhon Si Thammarat", 
+                lat: 8.4309, lng: 99.9631,
+                project: "Ratchadamnoen Road Flood Barrier Construction",
+                projectStartDate: "2562-09-01",
+                completedDate: "2564-03-15",
+                budget: 7244000, maintenanceCount: 2,
+                population: 167000, households: 55667, evacuated: 2480,
+                shelterNearby: "Wat Phra Mahathat Woramahawihan, Provincial Hall, Benjamarachutit School",
+                waterLevel: 2.85,
+                overflowStatus: "SEVERE OVERFLOW - EMERGENCY",
+                overflowHeight: 1.85,
+                riverStatus: "Critical! 1.85m above danger level",
+                rainDurationHours: 48,
+                emergencyResponse: "Emergency Command Center, 13 rescue teams, 18 boats",
+                affectedInfra: "24 main roads, 5 bridges closed, power outage 8 zones, Areas: All districts, Pak Phanang, Thung Song, Chawang",
+                forecast: "Heavy rain continuing for 36 hours",
+                baseRain: 271, baseRisk: 'critical'
+            },
+            { 
+                name: "Sichon", 
+                lat: 8.4580, lng: 99.8956,
+                project: "Sichon-Khanom Drainage Tunnel",
+                projectStartDate: "2563-04-10",
+                completedDate: "2565-12-20",
+                budget: 2890000, maintenanceCount: 3,
+                population: 72000, households: 24000, evacuated: 950,
+                shelterNearby: "Wat Khao Kong, Sichon Pittayakom School",
+                waterLevel: 1.95,
+                overflowStatus: "Critical Overflow",
+                overflowHeight: 0.95,
+                riverStatus: "0.95m above danger level",
+                rainDurationHours: 40,
+                emergencyResponse: "5 rescue teams, 8 boats",
+                affectedInfra: "15 roads, 3,200 rai farmland flooded, Areas: Sichon, Khanom Krot",
+                forecast: "Rain decreasing in 20 hours",
+                baseRain: 198, baseRisk: 'critical'
+            },
+            { 
+                name: "Pak Phanang", 
+                lat: 8.3533, lng: 100.1983,
+                project: "Utokkawipatprasit Floodgate System",
+                projectStartDate: "2562-10-05",
+                completedDate: "2564-08-10",
+                budget: 3500000, maintenanceCount: 5,
+                population: 89000, households: 29667, evacuated: 450,
+                shelterNearby: "Wat Sri Somboon, Pak Phanang Wittaya School",
+                waterLevel: 1.15,
+                overflowStatus: "Moderate Overflow",
+                overflowHeight: 0.55,
+                riverStatus: "Coastal erosion + river overflow",
+                rainDurationHours: 30,
+                emergencyResponse: "4 rescue teams",
+                affectedInfra: "2km coastal erosion, 8 roads, Areas: Pak Phanang, Laem Talumphuk",
+                forecast: "Strong winds and waves for 24 hours",
+                baseRain: 145, baseRisk: 'high'
+            },
+            { 
+                name: "Tha Sala", 
+                lat: 8.6639, lng: 99.9272,
+                project: "Tha Sala Canal Dredging Project",
+                projectStartDate: "2562-01-15",
+                completedDate: "2563-06-25",
+                budget: 320000, maintenanceCount: 4,
+                population: 45000, households: 15000, evacuated: 0,
+                shelterNearby: "Tha Sala Prachanusan School",
+                waterLevel: 0.22,
+                overflowStatus: "No Overflow",
+                overflowHeight: 0,
+                riverStatus: "Normal - safe area",
+                rainDurationHours: 10,
+                emergencyResponse: "Normal conditions",
+                affectedInfra: "None - safe area",
+                forecast: "Clear weather",
+                baseRain: 48, baseRisk: 'low'
+            }
+        ];
+
+        const safetyPlaces = [
+            // Northern Region - Chiang Mai
+            { id: 1, name: "Wat Chedi Luang", lat: 18.7871, lng: 98.9877, capacity: 800, available: 650, type: "Temple", contact: "053-276-140" },
+            { id: 2, name: "Yupparaj Wittayalai School", lat: 18.7950, lng: 98.9920, capacity: 1200, available: 980, type: "School", contact: "053-221-320" },
+            { id: 3, name: "Wat Phra That Doi Saket", lat: 18.8900, lng: 98.9400, capacity: 500, available: 420, type: "Temple", contact: "053-338-259" },
+            { id: 4, name: "Wat Phra That Hariphunchai", lat: 18.5742, lng: 99.0075, capacity: 600, available: 550, type: "Temple", contact: "053-511-173" },
+            
+            // Central Region - Pathum Thani and Bangkok
+            { id: 10, name: "Thammasat University Rangsit", lat: 14.0706, lng: 100.6048, capacity: 2500, available: 1850, type: "Community Center", contact: "02-564-4440" },
+            { id: 11, name: "IMPACT Arena Dome", lat: 13.9120, lng: 100.5635, capacity: 3000, available: 2200, type: "Stadium", contact: "02-833-4455" },
+            { id: 12, name: "Silpakorn University Sanam Chandra", lat: 13.8176, lng: 100.0386, capacity: 1500, available: 1100, type: "School", contact: "034-255-800" },
+            { id: 13, name: "Wat Phra Pathom Chedi", lat: 13.8192, lng: 100.0380, capacity: 1000, available: 850, type: "Temple", contact: "034-242-143" },
+            { id: 14, name: "Rajavithi Hospital", lat: 13.7626, lng: 100.5369, capacity: 500, available: 500, type: "Community Center", contact: "02-354-8108" },
+            
+            // Eastern Region
+            { id: 20, name: "Wat Khao Sukim", lat: 12.6095, lng: 102.1050, capacity: 700, available: 580, type: "Temple", contact: "039-311-250" },
+            { id: 21, name: "Jan Hun Bamrung School", lat: 12.6107, lng: 102.1055, capacity: 900, available: 720, type: "School", contact: "039-311-444" },
+            { id: 22, name: "Rayong Provincial Hall", lat: 12.6828, lng: 101.2815, capacity: 1000, available: 900, type: "Community Center", contact: "038-611-507" },
+            { id: 23, name: "Rayong Wittayakom School", lat: 12.6805, lng: 101.2835, capacity: 1200, available: 1050, type: "School", contact: "038-611-363" },
+            
+            // Southern Region - Nakhon Si Thammarat (CRITICAL - Need many shelters)
+            { id: 100, name: "Wat Phra Mahathat Woramahawihan", lat: 8.4100, lng: 99.9650, capacity: 2000, available: 1520, type: "Temple", contact: "075-341-449" },
+            { id: 101, name: "Nakhon Si Thammarat Provincial Hall", lat: 8.4280, lng: 99.9620, capacity: 800, available: 320, type: "Community Center", contact: "075-356-515" },
+            { id: 102, name: "Benjamarachutit School", lat: 8.4350, lng: 99.9580, capacity: 1500, available: 50, type: "School", contact: "075-356-234" },
+            { id: 103, name: "Wat Khao Kong", lat: 8.4570, lng: 99.8960, capacity: 600, available: 150, type: "Temple", contact: "075-377-159" },
+            { id: 104, name: "Sichon Pittayakom School", lat: 8.4590, lng: 99.8945, capacity: 800, available: 200, type: "School", contact: "075-377-032" },
+            { id: 105, name: "Wat Sri Somboon", lat: 8.3500, lng: 100.2000, capacity: 500, available: 280, type: "Temple", contact: "075-333-888" },
+            { id: 106, name: "Pak Phanang Wittaya School", lat: 8.3520, lng: 100.1995, capacity: 700, available: 450, type: "School", contact: "075-333-612" },
+            { id: 107, name: "Tha Sala Prachanusan School", lat: 8.6645, lng: 99.9285, capacity: 600, available: 590, type: "School", contact: "075-577-024" }
+        ];
+
+        let floodData = [], victimsData = [], sosMarkers = [];
+        let mapFlood, mapVictims, mapSafety;
+        let layerFlood, layerVictims, layerSafety;
+        let routingControl = {}; 
+        let selectedPoint = {}; 
+        let currentUser = null;
+        let currentDocumentData = null;
+
+        document.addEventListener('DOMContentLoaded', () => {
+            initMaps();
+            generateMockData();
+            renderFloodPage(); renderVictimsPage(); renderSafetyPage();
+            setInterval(() => document.getElementById('currentTime').innerText = new Date().toLocaleTimeString('th-TH'), 1000);
+            
+            document.getElementById('searchDistrict').addEventListener('input', (e) => filterList(e.target.value, '#districtList .list-item'));
+            document.getElementById('searchVictim').addEventListener('input', (e) => filterList(e.target.value, '#victimsList .list-item'));
+            document.getElementById('searchSafety').addEventListener('input', (e) => filterList(e.target.value, '#safetyList .list-item'));
+        });
+
+        function initMaps() {
+            const view = [11.0, 100.0]; const zoom = 6;
+            const tile = 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png';
+
+            mapFlood = L.map('map-flood', {zoomControl: false}).setView(view, zoom);
+            L.tileLayer(tile).addTo(mapFlood); layerFlood = L.layerGroup().addTo(mapFlood);
+            L.control.zoom({position:'bottomright'}).addTo(mapFlood);
+
+            mapVictims = L.map('map-victims', {zoomControl: false}).setView(view, zoom);
+            L.tileLayer(tile).addTo(mapVictims); layerVictims = L.layerGroup().addTo(mapVictims);
+            L.control.zoom({position:'bottomright'}).addTo(mapVictims);
+
+            mapSafety = L.map('map-safety', {zoomControl: false}).setView(view, zoom);
+            L.tileLayer(tile).addTo(mapSafety); layerSafety = L.layerGroup().addTo(mapSafety);
+            L.control.zoom({position:'bottomright'}).addTo(mapSafety);
+        }
+
+        function generateMockData() {
+            floodData = districts.map(d => {
+                // Use baseRain with small variation (±10mm) to maintain geographical correlation
+                const rain = d.baseRain + Math.floor(Math.random() * 20) - 10;
+                const risk = d.baseRisk;
+                const radius = 2000 + Math.random() * 1500; 
+                
+                return { ...d, rain, risk, radius };
+            });
+
+            // Address templates for each district
+            const addressTemplates = {
+                'Phra Nakhon': {roads: ['Ratchadamnoen Rd.', 'Phra Athit Rd.', 'Tanao Rd.'], sois: ['Soi 1', 'Soi 2', 'Soi 3', 'Soi 4']},
+                'Bang Rak': {roads: ['Silom Rd.', 'Sathorn Rd.', 'Surawong Rd.'], sois: ['Soi 1', 'Soi 2', 'Soi 3']},
+                'Khlong Toei': {roads: ['Sukhumvit Rd.', 'Rama 4 Rd.', 'New Petchburi Rd.'], sois: ['Soi 1', 'Soi 3', 'Soi 5', 'Soi 7']},
+                'Mueang Nakhon Si Thammarat': {roads: ['Ratchadamnoen Rd.', 'Pak Nakhon Rd.', 'Charoen Rat Rd.'], sois: ['Soi 1', 'Soi 2', 'Soi 3']},
+                'Pak Phanang': {roads: ['Pak Phanang-Sichon Rd.', 'Coastal Rd.'], sois: ['Soi 1', 'Soi 2']}
+            };
+
+            for(let i=0; i<25; i++) {
+                const d = districts[Math.floor(Math.random()*districts.length)];
+                const angle = Math.random() * Math.PI * 2;
+                const r = Math.sqrt(Math.random()) * 0.02;
+                const lat = d.lat + r * Math.cos(angle);
+                const lng = d.lng + r * Math.sin(angle);
+
+                // Generate realistic address
+                const template = addressTemplates[d.name] || {roads: ['Main Rd.'], sois: ['Soi 1', 'Soi 2']};
+                const houseNo = Math.floor(Math.random() * 999) + 1;
+                const soi = template.sois[Math.floor(Math.random() * template.sois.length)];
+                const road = template.roads[Math.floor(Math.random() * template.roads.length)];
+                const address = `${houseNo} ${soi} ${road}`;
+
+                victimsData.push({
+                    id: i,
+                    address: address,
+                    lat: lat, 
+                    lng: lng,
+                    district: d.name,
+                    status: ["urgent", "wait", "safe"][Math.floor(Math.random()*3)],
+                    isSOS: false,
+                    victimType: null
+                });
+            }
+        }
+
+        function login(type) {
+            currentUser = { type: type, name: type === 'client' ? 'Citizen' : 'Government Official' };
+            document.getElementById('loginContainer').classList.add('hidden');
+            
+            document.getElementById('userBadge').style.display = 'flex';
+            document.getElementById('logoutBtn').style.display = 'block';
+            document.getElementById('userBadgeName').innerText = currentUser.name;
+            
+            const badgeAvatar = document.getElementById('userBadgeAvatar');
+            badgeAvatar.className = `user-badge-avatar ${type}`;
+            badgeAvatar.innerHTML = type === 'client' ? '<i class="fas fa-user"></i>' : '<i class="fas fa-user-shield"></i>';
+            
+            const els = document.querySelectorAll(type === 'client' ? '.sos-btn' : '.drone-btn');
+            els.forEach(el => el.classList.add('show'));
+        }
+
+        function logout() {
+            currentUser = null;
+            document.getElementById('loginContainer').classList.remove('hidden');
+            document.querySelectorAll('.action-btn').forEach(btn => btn.classList.remove('show'));
+            closeDocumentSidebar();
+        }
+
+        // --- DOCUMENT SIDEBAR FUNCTIONS ---
+        function openDocumentSidebar(districtData) {
+            currentDocumentData = districtData;
+            const sidebar = document.getElementById('documentSidebar');
+            const content = document.getElementById('docContent');
+            const title = document.getElementById('docTitle');
+            
+            title.textContent = `Situation Report: ${districtData.name}`;
+            
+            const riskColor = districtData.risk==='critical'?'#ff3333':districtData.risk==='high'?'#ff8800':districtData.risk==='medium'?'#ffcc00':'#00cc66';
+            const riskText = {'critical':'Critical','high':'High','medium':'Medium','low':'Normal'}[districtData.risk];
+            
+            content.innerHTML = `
+                <div class="doc-section">
+                    <div class="doc-section-title">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        Risk Level & Overflow Status
+                    </div>
+                    <div style="text-align: center; margin: 1rem 0;">
+                        <span class="doc-risk-badge ${districtData.risk}">${riskText}</span>
+                    </div>
+                    <div class="doc-field">
+                        <span class="doc-field-label">Rainfall Amount:</span>
+                        <span class="doc-field-value">${districtData.rain} mm</span>
+                    </div>
+                    <div class="doc-field">
+                        <span class="doc-field-label">Rain Duration:</span>
+                        <span class="doc-field-value" style="color:${districtData.rainDurationHours > 20 ? '#ff8800' : '#00cc66'}">${districtData.rainDurationHours} hours</span>
+                    </div>
+                    <div class="doc-field">
+                        <span class="doc-field-label">Water Level:</span>
+                        <span class="doc-field-value">${districtData.waterLevel} m</span>
+                    </div>
+                    <div class="doc-field">
+                        <span class="doc-field-label">Overflow Status:</span>
+                        <span class="doc-field-value" style="color:${districtData.overflowHeight > 0.5 ? '#ff3333' : districtData.overflowHeight > 0 ? '#ffcc00' : '#00cc66'}">${districtData.overflowStatus}</span>
+                    </div>
+                    <div class="doc-field">
+                        <span class="doc-field-label">Above Normal Level:</span>
+                        <span class="doc-field-value" style="color:${districtData.overflowHeight > 0.5 ? '#ff3333' : '#ffcc00'}">+${districtData.overflowHeight} m</span>
+                    </div>
+                    <div class="doc-field">
+                        <span class="doc-field-label">River Status:</span>
+                        <span class="doc-field-value">${districtData.riverStatus}</span>
+                    </div>
+                    <div class="doc-field">
+                        <span class="doc-field-label">Forecast:</span>
+                        <span class="doc-field-value">${districtData.forecast}</span>
+                    </div>
+                </div>
+
+                <div class="doc-section">
+                    <div class="doc-section-title">
+                        <i class="fas fa-users"></i>
+                        Population Data
+                    </div>
+                    <div class="doc-field">
+                        <span class="doc-field-label">Total Population:</span>
+                        <span class="doc-field-value">${districtData.population?.toLocaleString() || 'N/A'} people</span>
+                    </div>
+                    <div class="doc-field">
+                        <span class="doc-field-label">Households:</span>
+                        <span class="doc-field-value">${districtData.households?.toLocaleString() || 'N/A'} units</span>
+                    </div>
+                    <div class="doc-field">
+                        <span class="doc-field-label">Evacuated:</span>
+                        <span class="doc-field-value" style="color:${districtData.evacuated>0?'#ff8800':'#00cc66'}">
+                            ${districtData.evacuated?.toLocaleString() || '0'} people
+                        </span>
+                    </div>
+                </div>
+
+                <div class="doc-section">
+                    <div class="doc-section-title">
+                        <i class="fas fa-hard-hat"></i>
+                        Flood Prevention Project
+                    </div>
+                    <div class="doc-field">
+                        <span class="doc-field-label">Project Name:</span>
+                        <span class="doc-field-value">${districtData.project}</span>
+                    </div>
+                    <div class="doc-field">
+                        <span class="doc-field-label">Start Date:</span>
+                        <span class="doc-field-value">${formatThaiDate(districtData.projectStartDate)}</span>
+                    </div>
+                    <div class="doc-field">
+                        <span class="doc-field-label">Completion Date:</span>
+                        <span class="doc-field-value">${formatThaiDate(districtData.completedDate)}</span>
+                    </div>
+                    <div class="doc-field">
+                        <span class="doc-field-label">Budget:</span>
+                        <span class="doc-field-value">${districtData.budget.toLocaleString()} THB</span>
+                    </div>
+                    <div class="doc-field">
+                        <span class="doc-field-label">Maintenance Count:</span>
+                        <span class="doc-field-value">${districtData.maintenanceCount} times</span>
+                    </div>
+                </div>
+
+                <div class="doc-section">
+                    <div class="doc-section-title">
+                        <i class="fas fa-ambulance"></i>
+                        Emergency Response
+                    </div>
+                    <div class="doc-field">
+                        <span class="doc-field-label">Status:</span>
+                        <span class="doc-field-value">${districtData.emergencyResponse}</span>
+                    </div>
+                    <div class="doc-field">
+                        <span class="doc-field-label">Nearby Shelters:</span>
+                        <span class="doc-field-value">${districtData.shelterNearby}</span>
+                    </div>
+                </div>
+
+                <div class="doc-section">
+                    <div class="doc-section-title">
+                        <i class="fas fa-road"></i>
+                        Affected Infrastructure
+                    </div>
+                    <p style="color: var(--text-secondary); line-height: 1.6;">
+                        ${districtData.affectedInfra}
+                    </p>
+                </div>
+
+                ${districtData.risk === 'critical' || districtData.risk === 'high' ? `
+                <div class="doc-warning-box">
+                    <strong><i class="fas fa-exclamation-triangle"></i> Warning:</strong><br>
+                    This area is at ${riskText} risk level. ${districtData.overflowHeight > 0.5 ? 'SEVERE OVERFLOW DETECTED! ' : ''}Avoid travel and prepare to evacuate if necessary.
+                </div>
+                ` : ''}
+
+                <div class="doc-info-box">
+                    <strong><i class="fas fa-info-circle"></i> Note:</strong><br>
+                    Last updated: ${new Date().toLocaleString('en-US')}
+                </div>
+            `;
+            
+            sidebar.classList.add('open');
+        }
+
+        function closeDocumentSidebar() {
+            document.getElementById('documentSidebar').classList.remove('open');
+            currentDocumentData = null;
+        }
+
+        function downloadPDF() {
+            if(!currentDocumentData) return;
+            
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+            
+            // Add Thai font support would require additional setup
+            // For now, we'll create a simple PDF with the data
+            
+            let y = 20;
+            doc.setFontSize(16);
+            doc.text(`Flood Report: ${currentDocumentData.name}`, 20, y);
+            
+            y += 15;
+            doc.setFontSize(12);
+            doc.text(`Risk Level: ${currentDocumentData.risk}`, 20, y);
+            
+            y += 10;
+            doc.text(`Rainfall: ${currentDocumentData.rain} mm`, 20, y);
+            
+            y += 10;
+            doc.text(`Water Level: ${currentDocumentData.waterLevel} m`, 20, y);
+            
+            y += 10;
+            doc.text(`Population: ${currentDocumentData.population?.toLocaleString()}`, 20, y);
+            
+            y += 10;
+            doc.text(`Households: ${currentDocumentData.households?.toLocaleString()}`, 20, y);
+            
+            y += 10;
+            doc.text(`Evacuated: ${currentDocumentData.evacuated?.toLocaleString()}`, 20, y);
+            
+            y += 15;
+            doc.text(`Project: ${currentDocumentData.project}`, 20, y);
+            
+            y += 10;
+            doc.text(`Completed: ${currentDocumentData.completedDate}`, 20, y);
+            
+            y += 10;
+            doc.text(`Budget: ${currentDocumentData.budget.toLocaleString()} THB`, 20, y);
+            
+            y += 15;
+            doc.text(`Emergency Response: ${currentDocumentData.emergencyResponse}`, 20, y);
+            
+            y += 10;
+            doc.text(`Affected Infrastructure: ${currentDocumentData.affectedInfra}`, 20, y);
+            
+            y += 15;
+            doc.setFontSize(10);
+            doc.text(`Generated: ${new Date().toLocaleString('th-TH')}`, 20, y);
+            
+            doc.save(`flood_report_${currentDocumentData.name}_${Date.now()}.pdf`);
+        }
+
+        function createSOSMarker(lat, lng, locName, victimType, map, layer) {
+            const currentTime = new Date().toLocaleTimeString('th-TH', { hour12: false });
+            
+            // Generate address for this location
+            const houseNo = Math.floor(Math.random() * 999) + 1;
+            const soi = `Soi ${Math.floor(Math.random() * 20) + 1}`;
+            const road = ['Main Rd.', 'Secondary Rd.', 'Route A', 'Route B'][Math.floor(Math.random() * 4)];
+            const address = `${houseNo} ${soi} ${road}`;
+            
+            const typeLabels = {
+                'elderly': '👴 Elderly',
+                'children': '👶 Children',
+                'disabled': '♿ Disabled',
+                'pregnant': '🤰 Pregnant',
+                'injured': '🤕 Injured',
+                'general': '👤 General',
+                'unknown': '❓ Unknown'
+            };
+            
+            const iconHtml = `
+                <div class="sos-marker" style="display:flex;align-items:center;justify-content:center;">
+                    <div style="background:#ff3333;color:white;width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:bold;border:3px solid white;box-shadow:0 0 20px #ff3333;">SOS</div>
+                </div>`;
+            
+            const marker = L.marker([lat, lng], {icon: L.divIcon({className:'c-icon', html:iconHtml, iconSize:[40,40]})}).addTo(layer);
+            
+            marker.bindPopup(`
+                <div class="popup-header" style="color:#ff3333"><i class="fas fa-exclamation-triangle"></i> SOS Signal</div>
+                <div class="popup-row"><span>Type:</span> <b>${typeLabels[victimType] || typeLabels['unknown']}</b></div>
+                <div class="popup-row"><span>Address:</span> ${address}</div>
+                <div class="popup-row"><span>District:</span> ${locName}</div>
+                <div class="popup-row"><span>Coordinates:</span> ${lat.toFixed(5)}, ${lng.toFixed(5)}</div>
+                <div class="popup-row"><span>Status:</span> <b style="color:#ff3333">Emergency</b></div>
+                <div class="popup-row"><span>Time:</span> ${currentTime}</div>
+            `);
+            
+            sosMarkers.push(marker);
+            
+            victimsData.push({
+                id: Date.now(), 
+                address: address,
+                lat: lat, 
+                lng: lng, 
+                district: locName, 
+                status: 'urgent', 
+                isSOS: true,
+                sosTime: currentTime, 
+                victimType: victimType
+            });
+
+            marker.on('click', () => {
+                selectedPoint.victims = selectedPoint.flood = { lat, lng };
+                document.querySelectorAll('.route-btn').forEach(b => b.classList.add('show'));
+            });
+        }
+
+        let currentSOSType = null;
+        let currentSOSPage = null;
+        let currentRiskFilter = 'all'; // 'all', 'critical', 'high', 'medium', 'low'
+
+        function filterByRisk(risk) {
+            // Toggle filter
+            if (currentRiskFilter === risk) {
+                currentRiskFilter = 'all';
+                document.querySelectorAll('.stat-card').forEach(c => c.classList.remove('active'));
+            } else {
+                currentRiskFilter = risk;
+                document.querySelectorAll('.stat-card').forEach(c => c.classList.remove('active'));
+                const selector = `.stat-card.c-${risk === 'critical' ? 'crit' : risk === 'high' ? 'high' : risk === 'medium' ? 'med' : 'safe'}`;
+                document.querySelector(selector).classList.add('active');
+            }
+            renderFloodPage();
+        }
+
+        function sendSOS(page) {
+            if(!currentUser || currentUser.type !== 'client') return;
+            currentSOSPage = page;
+            document.getElementById('sosModal').classList.add('show');
+        }
+
+        function selectSOSType(type) {
+            currentSOSType = type;
+            document.querySelectorAll('.sos-type-card').forEach(card => card.classList.remove('selected'));
+            event.currentTarget.classList.add('selected');
+            document.getElementById('sosConfirmBtn').disabled = false;
+        }
+
+        function closeSOSModal() {
+            document.getElementById('sosModal').classList.remove('show');
+            currentSOSType = null;
+            currentSOSPage = null;
+            document.querySelectorAll('.sos-type-card').forEach(card => card.classList.remove('selected'));
+            document.getElementById('sosConfirmBtn').disabled = true;
+        }
+
+        function confirmSOS() {
+            if(!currentSOSType || !currentSOSPage) return;
+            
+            const zones = floodData.filter(z => z.risk !== 'low');
+            if(!zones.length) {
+                closeSOSModal();
+                return alert("No risk areas found nearby!");
+            }
+            
+            const z = zones[Math.floor(Math.random()*zones.length)];
+            const radiusInDeg = z.radius / 111300;
+            const angle = Math.random() * Math.PI * 2;
+            const r = Math.sqrt(Math.random()) * radiusInDeg;
+            
+            const lat = z.lat + r * Math.cos(angle);
+            const lng = z.lng + r * Math.sin(angle);
+            
+            const map = currentSOSPage==='flood'?mapFlood:mapVictims;
+            const layer = currentSOSPage==='flood'?layerFlood:layerVictims;
+            
+            createSOSMarker(lat, lng, z.name, currentSOSType, map, layer);
+            map.flyTo([lat, lng], 14);
+            renderVictimsPage();
+            
+            closeSOSModal();
+            alert("SOS signal sent successfully! Help is on the way");
+        }
+
+        function startDroneScan(page) {
+            const map = page==='flood'?mapFlood:mapVictims;
+            const layer = page==='flood'?layerFlood:layerVictims;
+            const btn = document.getElementById(`droneScanBtn-${page}`);
+            const overlay = document.getElementById(`scanningOverlay-${page}`);
+            
+            const risky = floodData.filter(z => z.risk === 'high' || z.risk === 'critical');
+            if(!risky.length) return alert("No critical areas found to scan");
+
+            btn.disabled = true; overlay.classList.add('show');
+            let idx = 0; let drone = null; let found = 0;
+
+            const interval = setInterval(() => {
+                if(idx >= risky.length) {
+                    clearInterval(interval);
+                    if(drone) drone.remove();
+                    overlay.classList.remove('show');
+                    btn.disabled = false;
+                    renderVictimsPage(); 
+                    return alert(`Scan completed! Found ${found} SOS signals`);
+                }
+
+                const z = risky[idx];
+                const radiusInDeg = (z.radius * 0.8) / 111300;
+                const angle = Math.random() * Math.PI * 2;
+                const dist = Math.sqrt(Math.random()) * radiusInDeg;
+                
+                const targetLat = z.lat + dist * Math.cos(angle);
+                const targetLng = z.lng + dist * Math.sin(angle);
+                
+                let isFound = false;
+                if(Math.random() > 0.5) {
+                    isFound = true; found++;
+                }
+
+                if(drone) drone.remove();
+                const dIcon = `<div class="drone-marker" style="display:flex;justify-content:center;align-items:center;">
+                    <div style="width:36px;height:36px;background:linear-gradient(135deg,#00d2ff,#00ff88);border-radius:50%;display:flex;align-items:center;justify-content:center;box-shadow:0 0 15px #00d2ff;"><i class="fas fa-drone drone-icon"></i></div></div>`;
+                
+                drone = L.marker([targetLat, targetLng], {icon: L.divIcon({className:'c', html:dIcon, iconSize:[36,36]})}).addTo(map);
+                map.flyTo([targetLat, targetLng], 13, {duration: 1.5});
+
+                if(isFound) {
+                    setTimeout(() => {
+                        createSOSMarker(targetLat, targetLng, z.name, "unknown", map, layer);
+                    }, 1500);
+                }
+                idx++;
+            }, 2500);
+        }
+
+        function showNearestShelter(page) {
+            const pt = selectedPoint[page];
+            if(!pt) return;
+            const map = page==='flood'?mapFlood:mapVictims;
+
+            let nearest = null, minDst = Infinity;
+            safetyPlaces.filter(s => s.available > 0).forEach(s => {
+                const d = Math.sqrt(Math.pow(s.lat-pt.lat,2) + Math.pow(s.lng-pt.lng,2));
+                if(d < minDst) { minDst = d; nearest = s; }
+            });
+
+            if(!nearest) return alert("No available shelters nearby");
+
+            if(routingControl[page]) map.removeControl(routingControl[page]);
+
+            routingControl[page] = L.Routing.control({
+                waypoints: [L.latLng(pt.lat, pt.lng), L.latLng(nearest.lat, nearest.lng)],
+                router: L.Routing.osrmv1({serviceUrl:'https://router.project-osrm.org/route/v1', profile:'driving'}),
+                lineOptions: { styles: [{color:'#00ff88', opacity:0.8, weight:6}] },
+                createMarker: function() { return null; },
+                addWaypoints: false, 
+                show: false
+            }).addTo(map);
+
+            // Listen for route calculation
+            routingControl[page].on('routesfound', function(e) {
+                const route = e.routes[0];
+                const distanceKm = (route.summary.totalDistance / 1000).toFixed(2);
+                const timeMin = Math.round(route.summary.totalTime / 60);
+                
+                // Create info popup
+                const infoPopup = L.popup({
+                    closeButton: false,
+                    className: 'route-info-popup'
+                })
+                .setLatLng([pt.lat, pt.lng])
+                .setContent(`
+                    <div style="font-family: 'Kanit'; text-align: center;">
+                        <div style="font-size: 1.1rem; color: #00ff88; margin-bottom: 5px;">
+                            <i class="fas fa-route"></i> Route to Shelter
+                        </div>
+                        <div style="font-size: 0.9rem;">
+                            <strong>Distance:</strong> ${distanceKm} km<br>
+                            <strong>Est. Time:</strong> ${timeMin} minutes<br>
+                            <strong>Destination:</strong> ${nearest.name}
+                        </div>
+                    </div>
+                `)
+                .openOn(map);
+            });
+
+            document.getElementById(`clearBtn-${page}`).classList.add('show');
+        }
+
+        function clearRoute(page) {
+            if(routingControl[page]) {
+                (page==='flood'?mapFlood:mapVictims).removeControl(routingControl[page]);
+                routingControl[page] = null;
+            }
+            document.getElementById(`clearBtn-${page}`).classList.remove('show');
+            document.getElementById(`routeBtn-${page}`).classList.remove('show');
+        }
+
+        function renderFloodPage() {
+            layerFlood.clearLayers();
+            const list = document.getElementById('districtList'); list.innerHTML = '';
+            const stats = {critical:0, high:0, medium:0, low:0};
+
+            safetyPlaces.forEach(s => addShelterMarker(s, layerFlood));
+            victimsData.filter(v => v.isSOS).forEach(v => addVictimToMap(v, mapFlood, layerFlood));
+
+            // Filter data based on currentRiskFilter
+            const displayData = currentRiskFilter === 'all' 
+                ? floodData 
+                : floodData.filter(d => d.risk === currentRiskFilter);
+
+            floodData.forEach(d => stats[d.risk]++); // Count all for stats
+
+            displayData.sort((a,b)=>b.rain-a.rain).forEach(d => {
+                
+                if(d.risk !== 'low') {
+                    const col = d.risk==='critical'?'#ff3333':d.risk==='high'?'#ff8800':'#ffcc00';
+                    const riskText = {'critical':'CRITICAL','high':'HIGH','medium':'MEDIUM'}[d.risk];
+                    const c = L.circle([d.lat, d.lng], {color:col, fillColor:col, fillOpacity:0.35, radius:d.radius}).addTo(layerFlood);
+                    c.bindPopup(`
+                        <div class="popup-header">${d.name}</div>
+                        <div class="popup-row"><span>Rainfall:</span> <b>${d.rain}mm</b></div>
+                        <div class="popup-row"><span>Water Level:</span> <b>${d.waterLevel}m</b></div>
+                        <div class="popup-row"><span>Overflow:</span> <b style="color:${d.overflowHeight > 0.5 ? '#ff3333' : '#ffcc00'}">${d.overflowStatus}</b></div>
+                        <div class="popup-row"><span>Above Normal:</span> <b>+${d.overflowHeight}m</b></div>
+                        <div class="popup-row"><span>Risk:</span> <b style="color:${col}">${riskText}</b></div>
+                        <div class="popup-row"><span>Project:</span> ${d.project}</div>
+                        <button class="popup-view-doc-btn" onclick="openDocumentSidebar(floodData.find(x => x.name === '${d.name}'))">
+                            <i class="fas fa-file-alt"></i> View Details
+                        </button>
+                    `);
+                    c.on('click', () => {
+                         selectedPoint.flood = {lat:d.lat, lng:d.lng};
+                         document.getElementById('routeBtn-flood').classList.add('show');
+                    });
+                } else if(d.risk === 'low' && currentRiskFilter === 'low') {
+                    // Show low risk areas only when filtered
+                    const col = '#00cc66';
+                    const c = L.circle([d.lat, d.lng], {color:col, fillColor:col, fillOpacity:0.15, radius:d.radius}).addTo(layerFlood);
+                    c.bindPopup(`
+                        <div class="popup-header">${d.name}</div>
+                        <div class="popup-row"><span>Rainfall:</span> <b>${d.rain}mm</b></div>
+                        <div class="popup-row"><span>Status:</span> <b style="color:${col}">NORMAL</b></div>
+                        <div class="popup-row"><span>Overflow:</span> <b style="color:${col}">${d.overflowStatus}</b></div>
+                        <button class="popup-view-doc-btn" onclick="openDocumentSidebar(floodData.find(x => x.name === '${d.name}'))">
+                            <i class="fas fa-file-alt"></i> View Details
+                        </button>
+                    `);
+                }
+
+                const item = document.createElement('div');
+                item.className = 'list-item';
+                const col = d.risk==='critical'?'#ff3333':d.risk==='high'?'#ff8800':d.risk==='medium'?'#ffcc00':'#00cc66';
+                item.innerHTML = `
+                    <div class="item-info">
+                        <span class="item-name">${d.name}</span>
+                        <span class="item-sub">Rain: ${d.rain} mm • Duration ${d.rainDurationHours} hrs.</span>
+                    </div>
+                    <span class="status-badge" style="background:${col};color:#000">${{'critical':'Critical','high':'High','medium':'Medium','low':'Normal'}[d.risk]}</span>
+                `;
+                item.onclick = () => { 
+                    mapFlood.flyTo([d.lat, d.lng], 13);
+                    openDocumentSidebar(d);
+                };
+                list.appendChild(item);
+            });
+
+            ['crit','high','med','low'].forEach(k => document.getElementById(`f-${k}`).innerText = stats[k==='crit'?'critical':k==='high'?'high':k==='med'?'medium':'low']);
+        }
+
+        function renderVictimsPage() {
+            layerVictims.clearLayers();
+            const list = document.getElementById('victimsList'); list.innerHTML = '';
+            const stats = {urgent:0, wait:0, safe:0};
+            
+            safetyPlaces.forEach(s => addShelterMarker(s, layerVictims));
+
+            victimsData.sort((a,b) => b.isSOS - a.isSOS).forEach(v => {
+                stats[v.status]++;
+                addVictimToMap(v, mapVictims, layerVictims);
+
+                const item = document.createElement('div');
+                item.className = 'list-item';
+                
+                const typeLabels = {
+                    'elderly': '👴',
+                    'children': '👶',
+                    'disabled': '♿',
+                    'pregnant': '🤰',
+                    'injured': '🤕',
+                    'general': '👤',
+                    'unknown': '❓'
+                };
+                
+                if(v.isSOS) {
+                    const typeIcon = typeLabels[v.victimType] || '❓';
+                    item.innerHTML = `
+                        <div class="victim-avatar sos"><i class="fas fa-exclamation-triangle"></i></div>
+                        <div class="item-info">
+                            <span class="item-name">${typeIcon} ${v.address}</span>
+                            <span class="item-sub">District: ${v.district}</span>
+                        </div>
+                        <span class="status-badge urgent">Emergency</span>
+                    `;
+                } else {
+                    const iconClass = v.status==='urgent'?'fa-exclamation-circle':v.status==='wait'?'fa-clock':'fa-user-check';
+                    item.innerHTML = `
+                        <div class="victim-avatar ${v.status}"><i class="fas ${iconClass}"></i></div>
+                        <div class="item-info">
+                            <span class="item-name">${v.address}</span>
+                            <span class="item-sub">District: ${v.district}</span>
+                        </div>
+                        <span class="status-badge ${v.status}">${{'urgent':'Emergency','wait':'Waiting','safe':'Safe'}[v.status]}</span>
+                    `;
+                }
+                item.onclick = () => { mapVictims.flyTo([v.lat, v.lng], 14); };
+                list.appendChild(item);
+            });
+            ['urgent','wait','safe'].forEach(k => document.getElementById(`v-${k}`).innerText = stats[k]);
+        }
+
+        function renderSafetyPage() {
+            layerSafety.clearLayers();
+            const list = document.getElementById('safetyList'); list.innerHTML = '';
+            let cap=0, avail=0;
+            
+            safetyPlaces.forEach(s => {
+                cap+=s.capacity; avail+=s.available;
+                addShelterMarker(s, layerSafety);
+                
+                const typeIcons = {
+                    'Temple': '🛕',
+                    'School': '🏫',
+                    'Stadium': '🏟️',
+                    'Community Center': '🏢'
+                };
+                
+                const item = document.createElement('div');
+                item.className = 'list-item';
+                item.innerHTML = `
+                    <div class="safety-avatar"><i class="fas fa-shield-alt"></i></div>
+                    <div class="item-info">
+                        <span class="item-name">${s.name}</span>
+                        <span class="item-sub">${typeIcons[s.type] || ''} ${s.type} • Available: ${s.available}/${s.capacity}</span>
+                    </div>
+                    <span class="status-badge open">Open</span>
+                `;
+                item.onclick = () => mapSafety.flyTo([s.lat, s.lng], 14);
+                list.appendChild(item);
+            });
+            
+            document.getElementById('s-total').innerText = safetyPlaces.length;
+            document.getElementById('s-capacity').innerText = cap.toLocaleString();
+            document.getElementById('s-available').innerText = avail.toLocaleString();
+        }
+
+        function addVictimToMap(victim, map, layer) {
+            const typeLabels = {
+                'elderly': '👴 Elderly',
+                'children': '👶 Children',
+                'disabled': '♿ Disabled',
+                'pregnant': '🤰 Pregnant',
+                'injured': '🤕 Injured',
+                'general': '👤 General',
+                'unknown': '❓ Unknown'
+            };
+            
+            let iconHtml, size;
+            if(victim.isSOS) {
+                 iconHtml = `<div class="sos-marker" style="display:flex;align-items:center;justify-content:center;"><div style="background:#ff3333;color:white;width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:bold;border:3px solid white;box-shadow:0 0 20px #ff3333;">SOS</div></div>`;
+                 size = [40,40];
+            } else {
+                 const col = victim.status==='urgent'?'#ff3333':victim.status==='wait'?'#ffcc00':'#00cc66';
+                 iconHtml = `<div style="color:${col};font-size:1.2rem;text-align:center;"><i class="fas fa-map-marker-alt"></i></div>`;
+                 size = [30,30];
+            }
+            const marker = L.marker([victim.lat, victim.lng], {icon: L.divIcon({className:'c-icon', html:iconHtml, iconSize:size})}).addTo(layer);
+            
+            const popupContent = victim.isSOS 
+                ? `
+                    <div class="popup-header" style="color:#ff3333"><i class="fas fa-exclamation-triangle"></i> SOS Signal</div>
+                    <div class="popup-row"><span>Type:</span> <b>${typeLabels[victim.victimType] || typeLabels['unknown']}</b></div>
+                    <div class="popup-row"><span>Address:</span> ${victim.address}</div>
+                    <div class="popup-row"><span>District:</span> ${victim.district}</div>
+                    <div class="popup-row"><span>Coordinates:</span> ${victim.lat.toFixed(5)}, ${victim.lng.toFixed(5)}</div>
+                    <div class="popup-row"><span>Status:</span> <b style="color:#ff3333">Emergency</b></div>
+                    <div class="popup-row"><span>Time:</span> ${victim.sosTime || 'N/A'}</div>
+                `
+                : `
+                    <div class="popup-header">Help Request Point</div>
+                    <div class="popup-row"><span>Address:</span> ${victim.address}</div>
+                    <div class="popup-row"><span>District:</span> ${victim.district}</div>
+                    <div class="popup-row"><span>Coordinates:</span> ${victim.lat.toFixed(5)}, ${victim.lng.toFixed(5)}</div>
+                    <div class="popup-row"><span>Status:</span> <b>${{'urgent':'Emergency','wait':'Waiting for Help','safe':'Safe'}[victim.status]}</b></div>
+                `;
+            
+            marker.bindPopup(popupContent);
+            marker.on('click', () => {
+                selectedPoint.victims = selectedPoint.flood = { lat: victim.lat, lng: victim.lng };
+                document.querySelectorAll('.route-btn').forEach(b => b.classList.add('show'));
+            });
+        }
+
+        function addShelterMarker(s, layer) {
+            const icon = `<div style="color:#00ff88;font-size:1.5rem;text-align:center;text-shadow:0 0 10px #00ff88;"><i class="fas fa-shield-alt"></i></div>`;
+            L.marker([s.lat, s.lng], {icon:L.divIcon({className:'c', html:icon, iconSize:[30,30]})}).addTo(layer)
+             .bindPopup(`
+                <div class="popup-header" style="color:#00ff88"><i class="fas fa-shield-alt"></i> ${s.name}</div>
+                <div class="popup-row"><span>Type:</span> ${s.type}</div>
+                <div class="popup-row"><span>Capacity:</span> ${s.capacity} people</div>
+                <div class="popup-row"><span>Available:</span> <b style="color:#00ff88">${s.available} people</b></div>
+                <div class="popup-row"><span>Contact:</span> ${s.contact}</div>
+            `);
+        }
+
+        function filterList(val, selector) {
+            document.querySelectorAll(selector).forEach(el => el.style.display = el.innerText.toLowerCase().includes(val.toLowerCase()) ? 'flex' : 'none');
+        }
+
+        function switchPage(p) {
+            document.querySelectorAll('.page-container').forEach(e => e.classList.remove('active'));
+            document.getElementById(`page-${p}`).classList.add('active');
+            document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+            event.currentTarget.classList.add('active');
+            closeDocumentSidebar();
+            setTimeout(() => { mapFlood.invalidateSize(); mapVictims.invalidateSize(); mapSafety.invalidateSize(); }, 100);
+        }
+
+        function formatThaiDate(dateStr) {
+            const [year, month, day] = dateStr.split('-');
+            const thaiYear = parseInt(year);
+            const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+            return `${parseInt(day)} ${months[parseInt(month)-1]} ${thaiYear}`;
+        }
+    </script>
+</body>
+</html>
